@@ -37,6 +37,8 @@ void serialDebug()
 		Serial.print("Temp: ");
 		Serial.print(temperature);
 		Serial.println();
+		Serial.print("-------------------");
+		Serial.println();
 
 	//	Serial debug for RTC
 		DateTime now = rtc.now();
@@ -55,7 +57,6 @@ void serialDebug()
 		Serial.print(':');
 		Serial.print(now.second(), DEC);
 		Serial.println();
-
 }
 
 void temp()
@@ -70,16 +71,15 @@ void temp()
 
 void time()
 {
-	if (!rtc.begin()) {
-		Serial.println("Couldn't find RTC");
-		while (1);
-	}
+	rtc.begin();
 
 	if (!rtc.isrunning()) {
 		Serial.println("RTC is NOT running!");
-		rtc.adjust(DateTime(2017, 10, 31, 21, 12, 0));
 	}
+	//	adjust time here before compiling
+		rtc.adjust(DateTime(2017, 11, 4, 10, 43, 5));
 }
+
 
 void lcdTime()
 {
@@ -94,28 +94,55 @@ void lcdTime()
 	lcd.print(now.second(), DEC);
 
 	{
-		//	this is corrects display error for minutes on lcd at turn of every minute
-		if (now.minute() < 10) {
-			lcd.setCursor(4, 0);
-			lcd.print("0");
+		//	this corrects display error for hours on lcd when hour value is less than 10
+		if (now.hour() >= 0 && now.hour() < 10) {
+			lcd.setCursor(0, 0);
+			lcd.print('0');
+			lcd.print(now.hour(), DEC);
+			lcd.setCursor(2, 0);
+			lcd.print(':');
 			lcd.print(now.minute(), DEC);
+			lcd.setCursor(5, 0);
+			lcd.print(':');
+			lcd.print(now.second(), DEC);
 		}
-		//	this is corrects display error for seconds on lcd at turn of every minute
-		if (now.second() < 10) {
+		//	this corrects display error for minutes on lcd at turn of every hour
+		if (now.minute() >= 0 && now.minute() < 10) {
+			lcd.setCursor(3, 0);
+			lcd.print('0');
+			lcd.print(now.minute(), DEC);
+			lcd.setCursor(5, 0);
+			lcd.print(':');
+			lcd.print(now.second(), DEC);
+		}
+		//	this corrects display error for seconds on lcd at turn of every minute
+		if (now.second() >= 0 && now.second() < 10) {
 			lcd.setCursor(6, 0);
-			lcd.print("0");
+			lcd.print('0');
 			lcd.print(now.second(), DEC);
 		}
 	}
 	delay(500);
 }
 
+void startingMessage()
+{
+	lcd.setCursor(3, 0);
+	lcd.print("Loading...");
+	lcd.setCursor(1, 1);
+	lcd.print("Please Wait...");
+	delay(1000);
+	lcd.clear();
+}
 
 void setup(void)
 {
 	//	set up the LCD's number of columns and rows:
 	lcd.begin(16, 2);
 	Serial.begin(9600);
+	Wire.begin();
+
+	startingMessage();
 
 	time();
 
@@ -125,6 +152,6 @@ void setup(void)
 void loop()
 {
 	serialDebug();
-	temp();
 	lcdTime();
+	temp();
 }
