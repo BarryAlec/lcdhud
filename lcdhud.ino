@@ -63,8 +63,10 @@ void temp()
 {
 	lcd.setCursor(0, 1);
 	lcd.print("Temp: ");
-	lcd.print(temperature);
-	
+	lcd.print(round(temperature));
+	lcd.print((char)223);
+	lcd.print('F');
+
 	sensors.requestTemperatures();
 	temperature = sensors.getTempFByIndex(0);
 }
@@ -77,7 +79,7 @@ void time()
 		Serial.println("RTC is NOT running!");
 	}
 	//	adjust time here before compiling
-		rtc.adjust(DateTime(2017, 11, 4, 10, 43, 5));
+		rtc.adjust(DateTime(2017, 11, 4, 16, 35, 5));
 }
 
 
@@ -90,11 +92,9 @@ void lcdTime()
 	lcd.print(now.hour(), DEC);
 	lcd.print(':');
 	lcd.print(now.minute(), DEC);
-	lcd.print(':');
-	lcd.print(now.second(), DEC);
 
 	{
-		//	this corrects display error for hours on lcd when hour value is less than 10
+		//	this corrects display for hours on lcd when hour value is less than 10
 		if (now.hour() >= 0 && now.hour() < 10) {
 			lcd.setCursor(0, 0);
 			lcd.print('0');
@@ -102,26 +102,36 @@ void lcdTime()
 			lcd.setCursor(2, 0);
 			lcd.print(':');
 			lcd.print(now.minute(), DEC);
-			lcd.setCursor(5, 0);
-			lcd.print(':');
-			lcd.print(now.second(), DEC);
 		}
-		//	this corrects display error for minutes on lcd at turn of every hour
+		//	this corrects display for minutes on lcd when minute value is less than 10
 		if (now.minute() >= 0 && now.minute() < 10) {
 			lcd.setCursor(3, 0);
 			lcd.print('0');
 			lcd.print(now.minute(), DEC);
-			lcd.setCursor(5, 0);
-			lcd.print(':');
-			lcd.print(now.second(), DEC);
-		}
-		//	this corrects display error for seconds on lcd at turn of every minute
-		if (now.second() >= 0 && now.second() < 10) {
-			lcd.setCursor(6, 0);
-			lcd.print('0');
-			lcd.print(now.second(), DEC);
+	
 		}
 	}
+	
+	lcd.setCursor(6, 0);
+	lcd.print(now.year(), DEC);
+	lcd.print('/');
+	lcd.print(now.month(), DEC);
+	lcd.print('/');
+	lcd.print(now.day(), DEC);
+	
+	{
+		// this corrects display for days on lcd when day value is less than 10
+		if (now.day() >= 0 && now.day() < 10) {
+			lcd.setCursor(14, 0);
+			lcd.print('0');
+			lcd.print(now.day(), DEC);
+		}
+
+	}
+	
+	
+	
+	
 	delay(500);
 }
 
