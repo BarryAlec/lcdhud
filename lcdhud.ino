@@ -4,6 +4,11 @@
 #include <Wire.h>						//	I2C Wire Library
 #include "RTClib.h"						//	RTC library for DS1307
 
+// Versioning
+byte version = 0;
+byte subversion = 3;
+byte build = 2;
+
 /*
 initialize the library by associating any needed LCD interfact pin
 with the arduino pin number it is connected to:
@@ -26,40 +31,62 @@ LiquidCrystal lcd(rs, en, d4, d5, d6, d7);
 
 RTC_DS1307 rtc;
 
+void setup(void)
+{
+	//	set up the LCD's number of columns and rows:
+	lcd.begin(16, 2);
+	Serial.begin(9600);
+	Wire.begin();
+
+	startupMessage();
+
+	time();
+
+	sensors.begin();
+}
+
+void loop()
+{
+	serialDebug();
+	lcdTime();
+	temp();
+}
+
 void serialDebug()
 {
 	//	Serial debug for temperature sensor
-		Serial.print("Requesting temperatures from sensors: ");
-		sensors.requestTemperatures();
-		Serial.print("DONE");
-		Serial.println();
+	Serial.print("Requesting temperatures from sensors: ");
+	sensors.requestTemperatures();
+	Serial.print("DONE");
+	Serial.println();
 
-		Serial.print("Temp: ");
-		Serial.print(temperature);
-		Serial.println();
-		Serial.print("-------------------");
-		Serial.println();
+	Serial.print("Temp: ");
+	Serial.print(temperature);
+	Serial.println();
+	Serial.print("-------------------");
+	Serial.println();
 
 	//	Serial debug for RTC
-		DateTime now = rtc.now();
-		
-		Serial.print(now.year(), DEC);
-		Serial.print('/');
-		Serial.print(now.month(), DEC);
-		Serial.print('/');
-		Serial.print(now.day(), DEC);
-		Serial.print(" (");
-		Serial.print(daysOfTheWeek[now.dayOfTheWeek()]);
-		Serial.print(") ");
-		Serial.print(now.hour(), DEC);
-		Serial.print(':');
-		Serial.print(now.minute(), DEC);
-		Serial.print(':');
-		Serial.print(now.second(), DEC);
-		Serial.println();
+	DateTime now = rtc.now();
+
+	Serial.print(now.year(), DEC);
+	Serial.print('/');
+	Serial.print(now.month(), DEC);
+	Serial.print('/');
+	Serial.print(now.day(), DEC);
+	Serial.print(" (");
+	Serial.print(daysOfTheWeek[now.dayOfTheWeek()]);
+	Serial.print(") ");
+	Serial.print(now.hour(), DEC);
+	Serial.print(':');
+	Serial.print(now.minute(), DEC);
+	Serial.print(':');
+	Serial.print(now.second(), DEC);
+	Serial.println();
 }
 
 void temp()
+//	Function for requesting temperature from sensor and printing to LCD
 {
 	lcd.setCursor(0, 1);
 	lcd.print("Temp: ");
@@ -72,6 +99,7 @@ void temp()
 }
 
 void time()
+//	Starting, initializing and setting your time for the RTC
 {
 	rtc.begin();
 
@@ -79,11 +107,12 @@ void time()
 		Serial.println("RTC is NOT running!");
 	}
 	//	adjust time here before compiling
-		rtc.adjust(DateTime(2017, 11, 4, 16, 35, 5));
+	rtc.adjust(DateTime(2017, 11, 4, 9, 54, 12));
 }
 
 
 void lcdTime()
+//	Printing and displaying time and date from the RTC onto the LCD
 {
 	lcd.setCursor(0, 0);
 
@@ -108,17 +137,17 @@ void lcdTime()
 			lcd.setCursor(3, 0);
 			lcd.print('0');
 			lcd.print(now.minute(), DEC);
-	
+
 		}
 	}
-	
+
 	lcd.setCursor(6, 0);
 	lcd.print(now.year(), DEC);
 	lcd.print('/');
 	lcd.print(now.month(), DEC);
 	lcd.print('/');
 	lcd.print(now.day(), DEC);
-	
+
 	{
 		// this corrects display for days on lcd when day value is less than 10
 		if (now.day() >= 0 && now.day() < 10) {
@@ -128,40 +157,25 @@ void lcdTime()
 		}
 
 	}
-	
-	
-	
-	
+
+
+
+
 	delay(500);
 }
 
-void startingMessage()
+void startupMessage()
+//	Print start up message to LCD
 {
-	lcd.setCursor(3, 0);
-	lcd.print("Loading...");
-	lcd.setCursor(1, 1);
-	lcd.print("Please Wait...");
-	delay(1000);
+	String versionString;
+	char buffer[16];
+	sprintf(buffer, "Version %d.%02d.%02d", version, subversion, build);
+	versionString = String(buffer);
+
+	lcd.setCursor(0, 0);
+	lcd.print("D.A.T.E. Display");
+	lcd.setCursor(0, 1);
+	lcd.print(versionString);
+	delay(2000);
 	lcd.clear();
-}
-
-void setup(void)
-{
-	//	set up the LCD's number of columns and rows:
-	lcd.begin(16, 2);
-	Serial.begin(9600);
-	Wire.begin();
-
-	startingMessage();
-
-	time();
-
-	sensors.begin();
-}
-
-void loop()
-{
-	serialDebug();
-	lcdTime();
-	temp();
 }
