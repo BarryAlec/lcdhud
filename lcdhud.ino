@@ -6,18 +6,20 @@
 
 // Versioning
 byte version = 0;
-byte subversion = 3;
-byte build = 2;
+byte subversion = 4;
+byte build = 6;
 
-/*
-initialize the library by associating any needed LCD interfact pin
-with the arduino pin number it is connected to:
-*/
-int rs = 12, en = 11, d4 = 5, d5 = 4, d6 = 3, d7 = 2;
+#define menuButton 18
+#define ledRed 13
+#define ledBlue 9
 
-int tempSens = 10;
+int rs = 12, en = 11, d4 = 5, d5 = 4, d6 = 3, d7 = 2;	//	initializes library with assigned LCD pins
+
+#define tempSens 10
 
 float temperature = 0;
+int lowerLimit = 60;	//	Lower limit for temperature sensor
+int upperLimit = 80;	//	Upper limit for temperature sensor
 
 char daysOfTheWeek[7][24] = { "Sunday", "Monday", "Tuesday",
 "Wednesday", "Thursday", "Friday", "Saturday" };
@@ -38,6 +40,10 @@ void setup(void)
 	Serial.begin(9600);
 	Wire.begin();
 
+	pinMode(menuButton, INPUT);
+	pinMode(ledRed, OUTPUT);
+	pinMode(ledBlue, OUTPUT);
+
 	startupMessage();
 
 	time();
@@ -50,6 +56,7 @@ void loop()
 	serialDebug();
 	lcdTime();
 	temp();
+	tempLimit();
 }
 
 void serialDebug()
@@ -96,6 +103,33 @@ void temp()
 
 	sensors.requestTemperatures();
 	temperature = sensors.getTempFByIndex(0);
+
+}
+
+void tempLimit()
+//	Triggers LED's when temperature reaches an upper and lower limit
+{
+	if (temperature >= upperLimit) {
+		for (int fadeValue = 0; fadeValue <= 255; fadeValue += 15) {
+			analogWrite(ledRed, fadeValue);
+			delay(30);
+		}
+		for (int fadeValue = 255; fadeValue >= 0; fadeValue -= 15) {
+			analogWrite(ledRed, fadeValue);
+			delay(30);
+		}
+	}
+
+	if (temperature <= lowerLimit) {
+		for (int fadeValue = 0; fadeValue <= 255; fadeValue += 15) {
+			analogWrite(ledBlue, fadeValue);
+			delay(30);
+		}
+		for (int fadeValue = 255; fadeValue >= 0; fadeValue -= 15) {
+			analogWrite(ledBlue, fadeValue);
+			delay(30);
+		}
+	}
 }
 
 void time()
@@ -106,8 +140,9 @@ void time()
 	if (!rtc.isrunning()) {
 		Serial.println("RTC is NOT running!");
 	}
-	//	adjust time here before compiling
-	rtc.adjust(DateTime(2017, 11, 4, 9, 54, 12));
+	//	following line sets time to computer's time at time of compiling
+	//	remove comment tag in line below to set time
+	//	rtc.adjust(DateTime(__DATE__, __TIME__));
 }
 
 
@@ -118,50 +153,28 @@ void lcdTime()
 
 	DateTime now = rtc.now();
 
-	lcd.print(now.hour(), DEC);
+	print2digits(now.hour());
 	lcd.print(':');
-	lcd.print(now.minute(), DEC);
+	print2digits(now.minute());
 
-	{
-		//	this corrects display for hours on lcd when hour value is less than 10
-		if (now.hour() >= 0 && now.hour() < 10) {
-			lcd.setCursor(0, 0);
-			lcd.print('0');
-			lcd.print(now.hour(), DEC);
-			lcd.setCursor(2, 0);
-			lcd.print(':');
-			lcd.print(now.minute(), DEC);
-		}
-		//	this corrects display for minutes on lcd when minute value is less than 10
-		if (now.minute() >= 0 && now.minute() < 10) {
-			lcd.setCursor(3, 0);
-			lcd.print('0');
-			lcd.print(now.minute(), DEC);
-
-		}
-	}
+	
 
 	lcd.setCursor(6, 0);
-	lcd.print(now.year(), DEC);
+	print2digits(now.year());
 	lcd.print('/');
-	lcd.print(now.month(), DEC);
+	print2digits(now.month());
 	lcd.print('/');
-	lcd.print(now.day(), DEC);
-
-	{
-		// this corrects display for days on lcd when day value is less than 10
-		if (now.day() >= 0 && now.day() < 10) {
-			lcd.setCursor(14, 0);
-			lcd.print('0');
-			lcd.print(now.day(), DEC);
-		}
-
-	}
-
-
-
+	print2digits(now.day());
 
 	delay(500);
+}
+
+void print2digits(int number)
+{
+	if (number >= 0 && number < 10) {
+		lcd.print('0');
+	}
+	lcd.print(number, DEC);
 }
 
 void startupMessage()
