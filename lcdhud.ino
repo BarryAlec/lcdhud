@@ -1,4 +1,4 @@
-#include <LiquidCrystal.h>				//	LCD library
+#include <LiquidCrystal_I2C.h>			// I2C Library for LCD
 #include <OneWire.h>					//	One Wire library for DS sensors
 #include <DallasTemperature.h>			//	Dallas Temperature Library
 #include <Wire.h>						//	I2C Wire Library
@@ -7,19 +7,36 @@
 // Versioning
 byte version = 0;
 byte subversion = 4;
-byte build = 6;
+byte build = 10;
 
 #define menuButton 18
+
 #define ledRed 13
 #define ledBlue 9
 
-int rs = 12, en = 11, d4 = 5, d5 = 4, d6 = 3, d7 = 2;	//	initializes library with assigned LCD pins
+// Defining LCD
+#define LCD_I2C_ADDR 0x27
+
+#define BACKLIGHT_PIN 3
+#define En_pin 2
+#define Rw_pin 1
+#define Rs_pin 0
+#define D4_pin 4
+#define D5_pin 5
+#define D6_pin 6
+#define D7_pin 7
+
+int Con = 20;
 
 #define tempSens 10
 
 float temperature = 0;
 int lowerLimit = 60;	//	Lower limit for temperature sensor
 int upperLimit = 80;	//	Upper limit for temperature sensor
+
+int buttonPushCounter = 0;
+int buttonState = 0;
+int lastButtonState = 0;
 
 char daysOfTheWeek[7][24] = { "Sunday", "Monday", "Tuesday",
 "Wednesday", "Thursday", "Friday", "Saturday" };
@@ -29,16 +46,22 @@ OneWire oneWirePin(tempSens);
 
 DallasTemperature sensors(&oneWirePin);
 
-LiquidCrystal lcd(rs, en, d4, d5, d6, d7);
+LiquidCrystal_I2C lcd(LCD_I2C_ADDR, En_pin, Rw_pin, Rs_pin, D4_pin, D5_pin, D6_pin, D7_pin);
 
 RTC_DS1307 rtc;
 
 void setup(void)
 {
+	Serial.begin(115200);
 	//	set up the LCD's number of columns and rows:
-	lcd.begin(16, 2);
-	Serial.begin(9600);
+	lcd.begin(20, 4);
+	
+	lcd.setBacklightPin(BACKLIGHT_PIN, POSITIVE);
+	lcd.setBacklight(HIGH);
+
 	Wire.begin();
+
+	analogWrite(6, Con);
 
 	pinMode(menuButton, INPUT);
 	pinMode(ledRed, OUTPUT);
@@ -157,9 +180,9 @@ void lcdTime()
 	lcd.print(':');
 	print2digits(now.minute());
 
-	
+	lcd.print(" CDT");
 
-	lcd.setCursor(6, 0);
+	lcd.setCursor(10, 0);
 	print2digits(now.year());
 	lcd.print('/');
 	print2digits(now.month());
