@@ -6,13 +6,12 @@
 
 // Versioning
 byte version = 0;
-byte subversion = 4;
-byte build = 10;
+byte subversion = 5;
+byte build = 1;
+#define backlight_Button 18	// Pushbutton used to control lcd backlight
 
-#define menuButton 18
-
-#define ledRed 13
-#define ledBlue 9
+#define led_Red 13
+#define led_Blue 9
 
 // Defining LCD
 #define LCD_I2C_ADDR 0x27
@@ -26,6 +25,14 @@ byte build = 10;
 #define D6_pin 6
 #define D7_pin 7
 
+#define LCD_LIGHT_ON_TIME 60000 // How long (in ms) the LCD should stay on
+
+unsigned int currentLcdLightOnTime = 0; // Current time LCD backlight has been on
+unsigned long lcdLightOn_StartMillis;
+
+boolean isLcdLightOn;
+
+
 int Con = 20;
 
 #define tempSens 10
@@ -38,8 +45,8 @@ int buttonPushCounter = 0;
 int buttonState = 0;
 int lastButtonState = 0;
 
-char daysOfTheWeek[7][24] = { "Sunday", "Monday", "Tuesday",
-"Wednesday", "Thursday", "Friday", "Saturday" };
+char daysOfTheWeek[7][24] = { "Sun", "Mon", "Tue",
+"Wed", "Thu", "Fri", "Sat" };
 
 //	Setup a oneWire instance to communicate with any OneWire devices:
 OneWire oneWirePin(tempSens);
@@ -59,13 +66,17 @@ void setup(void)
 	lcd.setBacklightPin(BACKLIGHT_PIN, POSITIVE);
 	lcd.setBacklight(HIGH);
 
+	isLcdLightOn = true;
+
 	Wire.begin();
 
 	analogWrite(6, Con);
 
-	pinMode(menuButton, INPUT);
-	pinMode(ledRed, OUTPUT);
-	pinMode(ledBlue, OUTPUT);
+	pinMode(backlight_Button, INPUT);
+	pinMode(led_Red, OUTPUT);
+	pinMode(led_Blue, OUTPUT);
+
+	//attachInterrupt(digitalPinToInterrupt(4), buttonIncrement, RISING);
 
 	startupMessage();
 
@@ -80,6 +91,8 @@ void loop()
 	lcdTime();
 	temp();
 	tempLimit();
+	//buttonIncrement();
+	backlightEnable();
 }
 
 void serialDebug()
@@ -134,22 +147,22 @@ void tempLimit()
 {
 	if (temperature >= upperLimit) {
 		for (int fadeValue = 0; fadeValue <= 255; fadeValue += 15) {
-			analogWrite(ledRed, fadeValue);
+			analogWrite(led_Red, fadeValue);
 			delay(30);
 		}
 		for (int fadeValue = 255; fadeValue >= 0; fadeValue -= 15) {
-			analogWrite(ledRed, fadeValue);
+			analogWrite(led_Red, fadeValue);
 			delay(30);
 		}
 	}
 
 	if (temperature <= lowerLimit) {
 		for (int fadeValue = 0; fadeValue <= 255; fadeValue += 15) {
-			analogWrite(ledBlue, fadeValue);
+			analogWrite(led_Blue, fadeValue);
 			delay(30);
 		}
 		for (int fadeValue = 255; fadeValue >= 0; fadeValue -= 15) {
-			analogWrite(ledBlue, fadeValue);
+			analogWrite(led_Blue, fadeValue);
 			delay(30);
 		}
 	}
@@ -180,7 +193,9 @@ void lcdTime()
 	lcd.print(':');
 	print2digits(now.minute());
 
-	lcd.print(" CDT");
+	lcd.setCursor(6, 0);
+
+	lcd.print(daysOfTheWeek[now.dayOfTheWeek()]);
 
 	lcd.setCursor(10, 0);
 	print2digits(now.year());
@@ -214,4 +229,52 @@ void startupMessage()
 	lcd.print(versionString);
 	delay(2000);
 	lcd.clear();
+}
+
+void buttonIncrement()
+{
+	buttonState = digitalRead(backlight_Button);
+	
+	buttonState != lastButtonState; {
+
+		if (buttonState == LOW) {
+			buttonPushCounter++;
+			Serial.println("on");
+			Serial.print("number of button pushes: ");
+			Serial.println(buttonPushCounter);
+		}
+		else
+		{
+			Serial.println("off");
+		}
+		delay(50);
+	}
+}
+
+void backlightEnable()
+/* Checks how long LCD backlight has been on. If >= 60sec, backlight powers off. 
+Triggering pushbutton enables backlight and resets timer for auto-off function.
+*/
+{
+	buttonState = digitalRead(backlight_Button);
+
+	if (buttonState == LOW) {
+		Serial.println("Backlight On");
+
+		lcdLightOn_StartMillis = millis();
+		currentLcdLightOnTime = 0;
+		isLcdLightOn = true;
+		lcd.setBacklight(BACKLIGHT_ON);
+	}
+	else {
+		if (isLcdLightOn) {
+			currentLcdLightOnTime = millis() - lcdLightOn_StartMillis;
+			if (currentLcdLightOnTime > LCD_LIGHT_ON_TIME) {
+				isLcdLightOn = false;
+				lcd.setBacklight(BACKLIGHT_OFF);
+			}
+		}
+	}
+	Serial.print("Backlight on time: ");
+	Serial.println(currentLcdLightOnTime / 1000);
 }
