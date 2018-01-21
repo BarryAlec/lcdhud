@@ -7,9 +7,11 @@
 // Versioning
 byte version = 0;
 byte subversion = 5;
-byte build = 1;
+byte build = 15;
 #define backlight_Button 18	// Pushbutton used to control lcd backlight
 
+
+#define BUZZER_PIN 11
 #define led_Red 13
 #define led_Blue 9
 
@@ -75,8 +77,9 @@ void setup(void)
 	pinMode(backlight_Button, INPUT);
 	pinMode(led_Red, OUTPUT);
 	pinMode(led_Blue, OUTPUT);
+	pinMode(BUZZER_PIN, OUTPUT);
 
-	//attachInterrupt(digitalPinToInterrupt(4), buttonIncrement, RISING);
+	attachInterrupt(digitalPinToInterrupt(4), buttonDetect, FALLING);
 
 	startupMessage();
 
@@ -89,10 +92,11 @@ void loop()
 {
 	serialDebug();
 	lcdTime();
+	backlightEnable();
+	buttonDetect();
 	temp();
 	tempLimit();
 	//buttonIncrement();
-	backlightEnable();
 }
 
 void serialDebug()
@@ -275,6 +279,20 @@ Triggering pushbutton enables backlight and resets timer for auto-off function.
 			}
 		}
 	}
-	Serial.print("Backlight on time: ");
-	Serial.println(currentLcdLightOnTime / 1000);
+		Serial.print("Backlight on time: ");
+		Serial.println(currentLcdLightOnTime / 1000);
+}
+
+void buttonDetect()
+{
+	buttonState = digitalRead(backlight_Button);
+
+	if (buttonState == LOW) {
+		digitalWrite(BUZZER_PIN, HIGH);
+		delay(50);
+	}
+	else {
+		digitalWrite(BUZZER_PIN, LOW);
+		delay(50);
+	}
 }
