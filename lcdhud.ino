@@ -7,7 +7,7 @@
 // Versioning
 byte version = 0;
 byte subversion = 5;
-byte build = 15;
+byte build = 22;
 #define backlight_Button 18	// Pushbutton used to control lcd backlight
 
 
@@ -32,8 +32,9 @@ byte build = 15;
 unsigned int currentLcdLightOnTime = 0; // Current time LCD backlight has been on
 unsigned long lcdLightOn_StartMillis;
 
-boolean isLcdLightOn;
+unsigned int currentTempReading = 0; // Current temp reading
 
+boolean isLcdLightOn;
 
 int Con = 20;
 
@@ -90,11 +91,19 @@ void setup(void)
 
 void loop()
 {
-	serialDebug();
+	const unsigned long oneMinute = 1 * 60 * 1000UL;
+	static unsigned long lastTempReading = 0 - oneMinute;
+
+	unsigned long now = millis();
+
+	if (now - lastTempReading >= oneMinute) {
+		lastTempReading += oneMinute;
+		serialDebug();
+		temp();
+	}
 	lcdTime();
 	backlightEnable();
 	buttonDetect();
-	temp();
 	tempLimit();
 	//buttonIncrement();
 }
@@ -116,35 +125,39 @@ void serialDebug()
 	//	Serial debug for RTC
 	DateTime now = rtc.now();
 
-	Serial.print(now.year(), DEC);
-	Serial.print('/');
-	Serial.print(now.month(), DEC);
-	Serial.print('/');
-	Serial.print(now.day(), DEC);
-	Serial.print(" (");
-	Serial.print(daysOfTheWeek[now.dayOfTheWeek()]);
-	Serial.print(") ");
-	Serial.print(now.hour(), DEC);
-	Serial.print(':');
-	Serial.print(now.minute(), DEC);
-	Serial.print(':');
-	Serial.print(now.second(), DEC);
-	Serial.println();
+	static byte oldSecond = 60;
+	// display only if time changes
+
+	if (now.second() != oldSecond) {
+		Serial.print(now.year(), DEC);
+		Serial.print('/');
+		Serial.print(now.month(), DEC);
+		Serial.print('/');
+		Serial.print(now.day(), DEC);
+		Serial.print(" (");
+		Serial.print(daysOfTheWeek[now.dayOfTheWeek()]);
+		Serial.print(") ");
+		Serial.print(now.hour(), DEC);
+		Serial.print(':');
+		Serial.print(now.minute(), DEC);
+		Serial.print(':');
+		Serial.print(now.second(), DEC);
+		Serial.println();
+	}
 }
 
 void temp()
 //	Function for requesting temperature from sensor and printing to LCD
 {
-	lcd.setCursor(0, 1);
-	lcd.print("Temp: ");
-	lcd.print(round(temperature));
-	lcd.print((char)223);
-	lcd.print('F');
+		lcd.setCursor(0, 1);
+		lcd.print("Temp: ");
+		lcd.print(round(temperature));
+		lcd.print((char)223);
+		lcd.print('F');
 
-	sensors.requestTemperatures();
-	temperature = sensors.getTempFByIndex(0);
-
-}
+		sensors.requestTemperatures();
+		temperature = sensors.getTempFByIndex(0);
+	}
 
 void tempLimit()
 //	Triggers LED's when temperature reaches an upper and lower limit
@@ -189,29 +202,38 @@ void time()
 void lcdTime()
 //	Printing and displaying time and date from the RTC onto the LCD
 {
-	lcd.setCursor(0, 0);
 
 	DateTime now = rtc.now();
 
-	print2digits(now.hour());
-	lcd.print(':');
-	print2digits(now.minute());
+	static byte oldSecond = 60;
+	// display only if time changes
 
-	lcd.setCursor(6, 0);
+	if (now.second() != oldSecond) {
+		lcd.setCursor(0, 0);
 
-	lcd.print(daysOfTheWeek[now.dayOfTheWeek()]);
+		print2digits(now.hour());
+		lcd.print(':');
+		print2digits(now.minute());
+	}
+		
+	static byte oldDay = 99;
+	// display only if day changes
+	if (now.day() != oldDay) {
+		lcd.setCursor(6, 0);
 
-	lcd.setCursor(10, 0);
-	print2digits(now.year());
-	lcd.print('/');
-	print2digits(now.month());
-	lcd.print('/');
-	print2digits(now.day());
+		lcd.print(daysOfTheWeek[now.dayOfTheWeek()]);
 
-	delay(500);
+		lcd.setCursor(10, 0);
+		print2digits(now.year());
+		lcd.print('/');
+		print2digits(now.month());
+		lcd.print('/');
+		print2digits(now.day());
+	}
 }
 
 void print2digits(int number)
+// Adds a extra 0 for any number value < 10
 {
 	if (number >= 0 && number < 10) {
 		lcd.print('0');
@@ -256,7 +278,7 @@ void buttonIncrement()
 }
 
 void backlightEnable()
-/* Checks how long LCD backlight has been on. If >= 60sec, backlight powers off. 
+/* Checks how long LCD backlight has been on. If >= 60sec, backlight powers off.
 Triggering pushbutton enables backlight and resets timer for auto-off function.
 */
 {
@@ -279,11 +301,10 @@ Triggering pushbutton enables backlight and resets timer for auto-off function.
 			}
 		}
 	}
-		Serial.print("Backlight on time: ");
-		Serial.println(currentLcdLightOnTime / 1000);
 }
 
 void buttonDetect()
+// Triggers a buzzer when button goes from high to low
 {
 	buttonState = digitalRead(backlight_Button);
 
