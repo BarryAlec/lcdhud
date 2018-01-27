@@ -7,7 +7,7 @@
 // Versioning
 byte version = 0;
 byte subversion = 5;
-byte build = 22;
+byte build = 28;
 #define backlight_Button 18	// Pushbutton used to control lcd backlight
 
 
@@ -40,7 +40,8 @@ int Con = 20;
 
 #define tempSens 10
 
-float temperature = 0;
+float temperatureF = 0;
+float temperatureC = 0;
 int lowerLimit = 60;	//	Lower limit for temperature sensor
 int upperLimit = 80;	//	Upper limit for temperature sensor
 
@@ -117,7 +118,7 @@ void serialDebug()
 	Serial.println();
 
 	Serial.print("Temp: ");
-	Serial.print(temperature);
+	Serial.print(temperatureF);
 	Serial.println();
 	Serial.print("-------------------");
 	Serial.println();
@@ -149,20 +150,29 @@ void serialDebug()
 void temp()
 //	Function for requesting temperature from sensor and printing to LCD
 {
+
+		sensors.requestTemperatures();
+		temperatureF = sensors.getTempFByIndex(0);
 		lcd.setCursor(0, 1);
 		lcd.print("Temp: ");
-		lcd.print(round(temperature));
+		lcd.print(round(temperatureF));
 		lcd.print((char)223);
 		lcd.print('F');
 
-		sensors.requestTemperatures();
-		temperature = sensors.getTempFByIndex(0);
+		temperatureC = sensors.getTempCByIndex(0);
+
+		lcd.setCursor(12, 1);
+		lcd.print(char(126));
+		lcd.setCursor(15, 1);
+		lcd.print(round(temperatureC));
+		lcd.print((char)223);
+		lcd.print('C');
 	}
 
 void tempLimit()
 //	Triggers LED's when temperature reaches an upper and lower limit
 {
-	if (temperature >= upperLimit) {
+	if (temperatureF >= upperLimit) {
 		for (int fadeValue = 0; fadeValue <= 255; fadeValue += 15) {
 			analogWrite(led_Red, fadeValue);
 			delay(30);
@@ -173,7 +183,7 @@ void tempLimit()
 		}
 	}
 
-	if (temperature <= lowerLimit) {
+	if (temperatureF <= lowerLimit) {
 		for (int fadeValue = 0; fadeValue <= 255; fadeValue += 15) {
 			analogWrite(led_Blue, fadeValue);
 			delay(30);
