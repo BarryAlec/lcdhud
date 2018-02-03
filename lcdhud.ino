@@ -7,7 +7,7 @@
 // Versioning
 byte version = 0;
 byte subversion = 5;
-byte build = 28;
+byte build = 36;
 #define backlight_Button 18	// Pushbutton used to control lcd backlight
 
 
@@ -49,6 +49,12 @@ int buttonPushCounter = 0;
 int buttonState = 0;
 int lastButtonState = 0;
 
+int lastState = 0;
+
+enum states {
+	STOP, SENS, RTC, LCD, MAIN, CONT };
+states state = STOP;
+
 char daysOfTheWeek[7][24] = { "Sun", "Mon", "Tue",
 "Wed", "Thu", "Fri", "Sat" };
 
@@ -64,6 +70,8 @@ RTC_DS1307 rtc;
 void setup(void)
 {
 	Serial.begin(115200);
+	displayHelp();
+
 	//	set up the LCD's number of columns and rows:
 	lcd.begin(20, 4);
 	
@@ -99,7 +107,6 @@ void loop()
 
 	if (now - lastTempReading >= oneMinute) {
 		lastTempReading += oneMinute;
-		serialDebug();
 		temp();
 	}
 	lcdTime();
@@ -107,46 +114,111 @@ void loop()
 	buttonDetect();
 	tempLimit();
 	//buttonIncrement();
+	serialDebug();
 }
 
 void serialDebug()
 {
-	//	Serial debug for temperature sensor
-	Serial.print("Requesting temperatures from sensors: ");
+	switch (getCommand())
+	{
+	case '1':
+		state = SENS;
+		break;
+	case '2':
+		state = RTC;
+		break;
+	case '3':
+		state = LCD;
+		break;
+	case '0':
+		state = MAIN;
+		break;
+	case 'c':
+		state = CONT;
+		break;
+	default:
+		break;
+	}
+
+	switch (state)
+	{
+	case SENS:
+		tempDebug();
+		break;
+	case RTC:
+		rtcStatus();
+		break;
+	case LCD:
+		break;
+	case MAIN:
+		displayHelp();
+		state = STOP;
+		break;
+	case STOP:
+		break;
+	default:
+		break;
+	}
+}
+
+char getCommand()
+{
+	char c = '\0';
+	if (Serial.available())
+	{
+		c = Serial.read();
+	}
+	return c;
+}
+
+void displayHelp()
+{
+	String versionString;
+	char buffer[16];
+	sprintf(buffer, "Version %d.%02d.%02d", version, subversion, build);
+	versionString = String(buffer);
+	
+	Serial.print(F("LCD HUD - "));
+	Serial.print(versionString);
+	Serial.println();
+	Serial.println(F("\t1 - Query Temp Sensor"));
+	Serial.println(F("\t2 - RTC Status"));
+	Serial.println(F("\t3 - LCD Backlight Status"));
+	Serial.println(F("\t0 - Main Menu"));
+	Serial.println();
+}
+
+void tempDebug()
+{
 	sensors.requestTemperatures();
-	Serial.print("DONE");
-	Serial.println();
+	temperatureF = sensors.getTempFByIndex(0);
+	
+		Serial.print("Current reading from sensor: ");
+		Serial.print(temperatureF);
+		Serial.print((char)223);
+		Serial.print('F');
+}
 
-	Serial.print("Temp: ");
-	Serial.print(temperatureF);
-	Serial.println();
-	Serial.print("-------------------");
-	Serial.println();
-
-	//	Serial debug for RTC
+void rtcStatus()
+{
+	rtc.begin();
 	DateTime now = rtc.now();
 
-	static byte oldSecond = 60;
-	// display only if time changes
-
-	if (now.second() != oldSecond) {
-		Serial.print(now.year(), DEC);
-		Serial.print('/');
-		Serial.print(now.month(), DEC);
-		Serial.print('/');
-		Serial.print(now.day(), DEC);
-		Serial.print(" (");
-		Serial.print(daysOfTheWeek[now.dayOfTheWeek()]);
-		Serial.print(") ");
+	if (rtc.isrunning())
+	{
+		Serial.println("RTC is running.");
+		Serial.println("Current time: ");
 		Serial.print(now.hour(), DEC);
 		Serial.print(':');
 		Serial.print(now.minute(), DEC);
 		Serial.print(':');
 		Serial.print(now.second(), DEC);
-		Serial.println();
+	}
+	else
+	{
+		Serial.println("RTC is not running.");
 	}
 }
-
 void temp()
 //	Function for requesting temperature from sensor and printing to LCD
 {
