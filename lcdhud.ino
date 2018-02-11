@@ -7,9 +7,11 @@
 // Versioning
 byte version = 0;
 byte subversion = 5;
-byte build = 36;
+byte build = 44;
+
 #define backlight_Button 18	// Pushbutton used to control lcd backlight
 
+#define tempSens 10
 
 #define BUZZER_PIN 11
 #define led_Red 13
@@ -29,6 +31,12 @@ byte build = 36;
 
 #define LCD_LIGHT_ON_TIME 60000 // How long (in ms) the LCD should stay on
 
+#define NUM_A_SAMPLES 10	//	number of analog samples to take per reading
+
+int sum = 0;	//	sum of samples taken
+unsigned char sample_count = 0;	//	current sample number
+float voltage = 0.0;	//	calculated voltage
+
 unsigned int currentLcdLightOnTime = 0; // Current time LCD backlight has been on
 unsigned long lcdLightOn_StartMillis;
 
@@ -37,8 +45,6 @@ unsigned int currentTempReading = 0; // Current temp reading
 boolean isLcdLightOn;
 
 int Con = 20;
-
-#define tempSens 10
 
 float temperatureF = 0;
 float temperatureC = 0;
@@ -50,6 +56,7 @@ int buttonState = 0;
 int lastButtonState = 0;
 
 int lastState = 0;
+int currentState = 0;
 
 enum states {
 	STOP, SENS, RTC, LCD, MAIN, CONT };
@@ -113,10 +120,12 @@ void loop()
 	backlightEnable();
 	buttonDetect();
 	tempLimit();
+	voltageReference();
 	//buttonIncrement();
 	serialDebug();
 }
 
+//	SERIAL DEBUG MENU
 void serialDebug()
 {
 	switch (getCommand())
@@ -173,6 +182,7 @@ char getCommand()
 
 void displayHelp()
 {
+	//	This sets up the main menu for the serial debug menu
 	String versionString;
 	char buffer[16];
 	sprintf(buffer, "Version %d.%02d.%02d", version, subversion, build);
@@ -190,17 +200,28 @@ void displayHelp()
 
 void tempDebug()
 {
+	//	Calls temp sensor and posts readings in serial menu
 	sensors.requestTemperatures();
 	temperatureF = sensors.getTempFByIndex(0);
 	
+	const unsigned long oneMinute = 1 * 60 * 1000UL;
+	static unsigned long lastTempReading = 0 - oneMinute;
+
+	unsigned long now = millis();
+
+	if (now - lastTempReading >= oneMinute) {
+		lastTempReading += oneMinute;
 		Serial.print("Current reading from sensor: ");
 		Serial.print(temperatureF);
-		Serial.print((char)223);
 		Serial.print('F');
+		Serial.println();
+
+	}
 }
 
 void rtcStatus()
 {
+	//	Calls RTC and posts time to serial menu
 	rtc.begin();
 	DateTime now = rtc.now();
 
@@ -397,5 +418,30 @@ void buttonDetect()
 	else {
 		digitalWrite(BUZZER_PIN, LOW);
 		delay(50);
+	}
+}
+
+void voltageReference()
+//	Takes samples voltages from voltage divider and posts them to LCD
+{
+	const unsigned long oneMinute = 1 * 60 * 1000UL;
+	static unsigned long lastVReading = 0 - oneMinute;
+
+	unsigned long now = millis();
+	
+	if (now - lastVReading >= oneMinute) {
+		lastVReading += oneMinute;
+		while (sample_count < NUM_A_SAMPLES) {
+			sum += analogRead(A2);
+			sample_count++;
+			delay(10);
+		}
+		voltage = ((float)sum / (float)NUM_A_SAMPLES * 4.906) / 1024.0;
+
+		lcd.setCursor(0, 2);
+		lcd.print(voltage * 1.1);
+		lcd.print(" V");
+		sample_count = 0;
+		sum = 0;
 	}
 }
