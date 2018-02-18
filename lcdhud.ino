@@ -7,8 +7,68 @@
 // Versioning
 byte version = 0;
 byte subversion = 5;
-byte build = 44;
+byte build = 50;
 
+byte batLeftFull[8] = {
+	B11111,
+	B10000,
+	B10111,
+	B10111,
+	B10111,
+	B10111,
+	B10000,
+	B11111,
+};
+byte batMidFull[8] = {
+	B11111,
+	B00000,
+	B11111,
+	B11111,
+	B11111,
+	B11111,
+	B00000,
+	B11111,
+};
+byte batRightFull[8] = {
+	B11110,
+	B00010,
+	B11011,
+	B11101,
+	B11101,
+	B11011,
+	B00010,
+	B11110,
+};
+byte batLeftLow[8] = {
+	B11111,
+	B10000,
+	B10000,
+	B10000,
+	B10000,
+	B10000,
+	B10000,
+	B11111,
+};
+byte batMidLow[8] = {
+	B11111,
+	B00000,
+	B00000,
+	B00000,
+	B00000,
+	B00000,
+	B00000,
+	B11111,
+};
+byte batRightLow[8] = {
+	B11110,
+	B00010,
+	B00011,
+	B00001,
+	B00001,
+	B00011,
+	B00010,
+	B11110,
+};
 #define backlight_Button 18	// Pushbutton used to control lcd backlight
 
 #define tempSens 10
@@ -87,6 +147,13 @@ void setup(void)
 
 	isLcdLightOn = true;
 
+	lcd.createChar(0, batLeftFull);
+	lcd.createChar(1, batMidFull);
+	lcd.createChar(2, batRightFull);
+	lcd.createChar(3, batLeftLow);
+	lcd.createChar(4, batMidLow);
+	lcd.createChar(5, batRightLow);
+	
 	Wire.begin();
 
 	analogWrite(6, Con);
@@ -428,7 +495,7 @@ void voltageReference()
 	static unsigned long lastVReading = 0 - oneMinute;
 
 	unsigned long now = millis();
-	
+
 	if (now - lastVReading >= oneMinute) {
 		lastVReading += oneMinute;
 		while (sample_count < NUM_A_SAMPLES) {
