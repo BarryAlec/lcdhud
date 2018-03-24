@@ -7,68 +7,21 @@
 // Versioning
 byte version = 0;
 byte subversion = 5;
-byte build = 50;
-
+byte build = 63;
+// Custom characters for LCD
 byte batLeftFull[8] = {
-	B11111,
-	B10000,
-	B10111,
-	B10111,
-	B10111,
-	B10111,
-	B10000,
-	B11111,
-};
+	B11111,B10000,B10111,B10111,B10111,B10111,B10000,B11111,};
 byte batMidFull[8] = {
-	B11111,
-	B00000,
-	B11111,
-	B11111,
-	B11111,
-	B11111,
-	B00000,
-	B11111,
-};
+	B11111,B00000,B11111,B11111,B11111,B11111,B00000,B11111,};
 byte batRightFull[8] = {
-	B11110,
-	B00010,
-	B11011,
-	B11101,
-	B11101,
-	B11011,
-	B00010,
-	B11110,
-};
+	B11110,B00010,B11011,B11101,B11101,B11011,B00010,B11110,};
 byte batLeftLow[8] = {
-	B11111,
-	B10000,
-	B10000,
-	B10000,
-	B10000,
-	B10000,
-	B10000,
-	B11111,
-};
+	B11111,B10000,B10000,B10000,B10000,B10000,B10000,B11111,};
 byte batMidLow[8] = {
-	B11111,
-	B00000,
-	B00000,
-	B00000,
-	B00000,
-	B00000,
-	B00000,
-	B11111,
-};
+	B11111,B00000,B00000,B00000,B00000,B00000,B00000,B11111,};
 byte batRightLow[8] = {
-	B11110,
-	B00010,
-	B00011,
-	B00001,
-	B00001,
-	B00011,
-	B00010,
-	B11110,
-};
+	B11110,B00010,B00011,B00001,B00001,B00011,B00010,B11110,};
+
 #define backlight_Button 18	// Pushbutton used to control lcd backlight
 
 #define tempSens 10
@@ -289,7 +242,6 @@ void tempDebug()
 void rtcStatus()
 {
 	//	Calls RTC and posts time to serial menu
-	rtc.begin();
 	DateTime now = rtc.now();
 
 	if (rtc.isrunning())
@@ -307,6 +259,7 @@ void rtcStatus()
 		Serial.println("RTC is not running.");
 	}
 }
+
 void temp()
 //	Function for requesting temperature from sensor and printing to LCD
 {
@@ -357,12 +310,9 @@ void tempLimit()
 
 void time()
 //	Starting, initializing and setting your time for the RTC
-{
+{	
 	rtc.begin();
-
-	if (!rtc.isrunning()) {
-		Serial.println("RTC is NOT running!");
-	}
+	
 	//	following line sets time to computer's time at time of compiling
 	//	remove comment tag in line below to set time
 	//	rtc.adjust(DateTime(__DATE__, __TIME__));
@@ -372,7 +322,6 @@ void time()
 void lcdTime()
 //	Printing and displaying time and date from the RTC onto the LCD
 {
-
 	DateTime now = rtc.now();
 
 	static byte oldSecond = 60;
@@ -419,9 +368,9 @@ void startupMessage()
 	sprintf(buffer, "Version %d.%02d.%02d", version, subversion, build);
 	versionString = String(buffer);
 
-	lcd.setCursor(0, 0);
+	lcd.setCursor(2, 1);
 	lcd.print("D.A.T.E. Display");
-	lcd.setCursor(0, 1);
+	lcd.setCursor(3, 2);
 	lcd.print(versionString);
 	delay(2000);
 	lcd.clear();
@@ -510,5 +459,41 @@ void voltageReference()
 		lcd.print(" V");
 		sample_count = 0;
 		sum = 0;
+	}
+// Checks if board is being powered by 5v from USB.
+	if (analogRead(DEFAULT))
+	{
+		lcd.setCursor(8, 2);
+		lcd.print("USB");
+	}
+// Checks if board is powered by external source, battery, and gives a visual representation of charge.
+	else if (analogRead(A2) && voltage * 1.1 >= 6.75)
+	{
+		lcd.setCursor(8, 2);
+		lcd.print((char)0);
+		lcd.print((char)1);
+		lcd.print((char)2);
+	}
+	else if (analogRead(A2) && voltage * 1.1 >= 4.5)
+	{
+		lcd.setCursor(8, 2);
+		lcd.print((char)0);
+		lcd.print((char)1);
+		lcd.print((char)5);
+	}
+	else if (analogRead(A2) && voltage * 1.1 >= 2.25)
+	{
+		lcd.setCursor(8, 2);
+		lcd.print((char)0);
+		lcd.print((char)4);
+		lcd.print((char)5);
+	}
+	else if (analogRead(A2) && voltage * 1.1 <= 1.75)
+	{
+		lcd.setCursor(8, 2);
+		lcd.print((char)0);
+		lcd.print((char)4);
+		lcd.print((char)5);
+		lcd.print(" BAT LOW");
 	}
 }
